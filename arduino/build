@@ -1,0 +1,66 @@
+#!/bin/bash
+
+usage="Typical usage: build <source_code_file>"
+
+if [[ $1 != -* ]]; then
+	i=$1
+	shift 1
+fi
+
+while getopts :i:d:o:h flag
+do
+	case $flag in
+		i)i=$OPTARG;;
+		d)d=$OPTARG;;
+		o)o=$OPTARG;;
+		h)echo $usage; exit;;
+		*)echo "Invalid option -$OPTARG."; echo $usage; exit;;
+	esac
+done
+
+shift $(($OPTIND-1))
+
+if [[ -z $d ]]; then
+	d=arduino
+fi
+
+if [[ -z $i ]]; then
+	if [[ $# == 1 ]]; then
+		i=$1
+	else
+		echo $usage; exit
+	fi
+else
+	if [[ $# != 0 ]]; then
+		echo "Invalid syntax."; echo $usage; exit
+	fi
+fi
+
+if [[ -z $i ]]; then
+	echo "Please specify the source file by -i <filename>"
+else
+	regex_ino="(.*)\.ino$"
+	regex_pde="(.*)\.pde$"
+	regex_cpp="(.*)\.cpp$"
+
+	if [ -e $i ]; then
+		if [[ $i =~ $regex_ino ]] || [[ $i =~ $regex_pde ]] || [[ $i =~ $regex_cpp ]]; then
+			if [ ! -d $d/tmp ]; then
+				mkdir $d/tmp
+			fi
+
+			echo "#include \"../libraries/includes.h\"" > $d/tmp/main.cpp
+			cat $i >> $d/tmp/main.cpp
+
+			if [ -z $o ]; then
+				o=${BASH_REMATCH[1]}
+			fi
+
+			make -f $d/tmp/makefile DIR=$d OUT=$o
+		else
+			echo "File extension not supported. Supported file extensions are .cpp .ino .pde"
+		fi
+	else
+		echo "File does not exist."
+	fi
+fi
